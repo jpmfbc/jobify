@@ -3,12 +3,12 @@ const app = express()
 const bodyParser = require('body-parser')
 const sqlite = require('sqlite')
 const dbConnection = sqlite.open('banco.sqlite', { Promise })
-const port =  process.env.PORT || 3000
+const port = process.env.PORT || 3000
 
-app.use('/adim',(request,response,next) => {
-    if(request.hostname === "localhost"){
+app.use('/adim', (request, response, next) => {
+    if (request.hostname === "localhost") {
         next()
-    }else{
+    } else {
         response.send('Not allowed')
     }
 })
@@ -81,6 +81,45 @@ app.post('/admin/vagas/editar/:id', async (request, response) => {
     const db = await dbConnection
     await db.run(`update vagas set categoria = ${categoria},titulo = '${titulo}',descricao = '${descricao}' where id = ${id};`)
     response.redirect('/admin/vagas')
+})
+
+app.get('/admin/categorias', async (request, response) => {
+    const db = await dbConnection
+    const categorias = await db.all('select * from categorias')
+    response.render('admin/categorias', { categorias })
+})
+
+app.get('/admin/categorias/delete/:id', async (request, response) => {
+    const db = await dbConnection
+    await db.run(`delete from vagas where vagas.categoria  = (select id from categorias where id = ${request.params.id})`)
+    await db.run('delete from categorias where id = ' + request.params.id) 
+    response.redirect('/admin/categorias')
+})
+
+app.get('/admin/categorias/nova', async (request, response) => {
+    response.render('admin/nova-categoria')
+})
+
+app.post('/admin/categorias/nova', async (request, response) => {
+    const { categoria } = request.body
+    const db = await dbConnection
+    await db.run(`insert into categorias (categoria) values('${categoria}');`)
+    response.redirect('/admin/categorias')
+})
+
+app.get('/admin/categorias/editar/:id', async (request, response) => {
+    const db = await dbConnection
+    const id = request.params.id
+    const categoria = await db.get('select * from categorias where id ='+ id)
+    response.render('admin/editar-categoria', { categoria })
+})
+
+app.post('/admin/categorias/editar/:id', async (request, response) => {
+    const categoria = request.body.categoria
+    const id = request.params.id
+    const db = await dbConnection
+    await db.run(`update categorias set categoria = '${categoria}' where id = ${id};`)
+    response.redirect('/admin/categorias')
 })
 
 const init = async () => {
